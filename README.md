@@ -1,1 +1,1 @@
-# geodata-mgmt
+# stac-mgmt
