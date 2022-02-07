@@ -22,12 +22,12 @@ from stactools.core.projection import reproject_geom
 from constants import *
 
 
-def get_spatial_extent(polygons):
+def get_spatial_extent(polygons) -> pystac.SpatialExtent:
     unioned_geom = unary_union(polygons)
     return pystac.SpatialExtent(bboxes=[unioned_geom.bounds])
 
 
-def get_temporal_extent(starttime, endtime):
+def get_temporal_extent(starttime, endtime) -> pystac.TemporalExtent:
     time_interval = [starttime, endtime]
     return pystac.TemporalExtent(intervals=[time_interval])
 
@@ -82,7 +82,7 @@ def create_collection(extent: pystac.Extent) -> pystac.Collection:
     return collection
 
 
-def create_item(cog_href, collection):
+def create_item(cog_href: str, collection: pystac.Collection) -> pystac.Item:
 
     with rio.open(cog_href) as ds:
         gsd = ds.res[0]
