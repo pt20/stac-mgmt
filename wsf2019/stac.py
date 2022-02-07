@@ -1,10 +1,10 @@
 import os
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import dateutil.parser
 import pystac
 import rasterio as rio
-from constants import (
+from .constants import (
     DLR_PROVIDER,
     WSF2019_BANDS,
     WSF2019_DESCRIPTION,
@@ -17,7 +17,9 @@ from pystac.extensions.item_assets import ItemAssetsExtension
 from pystac.extensions.projection import ProjectionExtension
 from shapely.geometry import Polygon, box, mapping, shape
 from shapely.ops import unary_union
-from stactools.core.projection import reproject_geom
+from copy import deepcopy
+
+import pyproj
 from datetime import datetime
 
 
@@ -55,6 +57,48 @@ def create_full_extent(stac_item_list: List[pystac.Item]) -> pystac.Extent:
     )
 
     return collection_extent
+
+
+def reproject_geom(
+    src_crs: Union[pyproj.CRS, rio.crs.CRS, str],
+    dest_crs: Union[pyproj.CRS, rio.crs.CRS, str],
+    geom: Dict[str, Any],
+    precision: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Reprojects a geometry represented as GeoJSON
+    from the src_crs to the dest crs.
+    Args:
+        src_crs: pyproj.crs.CRS, rasterio.crs.CRS or str used to create one
+            Projection of input data.
+        dest_crs: pyproj.crs.CRS, rasterio.crs.CRS or str used to create one
+            Projection of output data.
+        geom (dict): The GeoJSON geometry
+        precision
+    Returns:
+        dict: The reprojected geometry
+    """
+    transformer = pyproj.Transformer.from_crs(src_crs, dest_crs, always_xy=True)
+    result = deepcopy(geom)
+
+    def fn(coords: Sequence[Any]) -> Sequence[Any]:
+        coords = list(coords)
+        for i in range(0, len(coords)):
+            coord = coords[i]
+            if isinstance(coord[0], Sequence):
+                coords[i] = fn(coord)
+            else:
+                x, y = coord
+                reprojected_coords = list(transformer.transform(x, y))
+                if precision is not None:
+                    reprojected_coords = [
+                        round(n, precision) for n in reprojected_coords
+                    ]
+                coords[i] = reprojected_coords
+        return coords
+
+    result["coordinates"] = fn(result["coordinates"])
+
+    return result
 
 
 def create_collection(extent: pystac.Extent) -> pystac.Collection:
