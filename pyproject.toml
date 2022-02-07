@@ -11,6 +11,7 @@ rio-stac = "^0.3.2"
 Shapely = "^1.8.0"
 matplotlib = "^3.5.1"
 ndjson = "^0.3.1"
+pyproj = "^3.3.0"
 
 [tool.poetry.dev-dependencies]
 jupyterlab = "^3.2.8"
