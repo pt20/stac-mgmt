@@ -1,35 +1,36 @@
-import json
 import os
-from datetime import datetime
-from os.path import basename, dirname, join
-from subprocess import call
-from tempfile import TemporaryDirectory
-from typing import List, Optional
+from typing import Dict, List
 
 import dateutil.parser
 import pystac
 import rasterio as rio
-from pystac.extensions import label
+from constants import (
+    DLR_PROVIDER,
+    WSF2019_BANDS,
+    WSF2019_DESCRIPTION,
+    WSF2019_ID,
+    WSF2019_LICENSE,
+    WSF2019_TITLE,
+)
 from pystac.extensions.eo import EOExtension
 from pystac.extensions.item_assets import ItemAssetsExtension
 from pystac.extensions.projection import ProjectionExtension
-from pystac.utils import str_to_datetime
-from shapely.geometry import GeometryCollection, Polygon, box, mapping, shape
+from shapely.geometry import Polygon, box, mapping, shape
 from shapely.ops import unary_union
-from stactools.core.io import read_text
 from stactools.core.projection import reproject_geom
+from datetime import datetime
 
-from constants import *
 
-
-def get_spatial_extent(polygons) -> pystac.SpatialExtent:
+def get_spatial_extent(polygons: List[Polygon]) -> pystac.SpatialExtent:
     unioned_geom = unary_union(polygons)
     return pystac.SpatialExtent(bboxes=[unioned_geom.bounds])
 
 
-def get_temporal_extent(starttime, endtime) -> pystac.TemporalExtent:
+def get_temporal_extent(
+    starttime: datetime, endtime: datetime
+) -> pystac.TemporalExtent:
     time_interval = [starttime, endtime]
-    return pystac.TemporalExtent(intervals=[time_interval])
+    return pystac.TemporalExtent(intervals=[time_interval])  # type: ignore
 
 
 def create_full_extent(stac_item_list: List[pystac.Item]) -> pystac.Extent:
@@ -44,9 +45,14 @@ def create_full_extent(stac_item_list: List[pystac.Item]) -> pystac.Extent:
         time_ranges.append(time_range)
 
     spatial_extent = get_spatial_extent(polygons)
-    temporal_extent = get_temporal_extent(min(time_ranges), max(time_ranges))
+    temporal_extent = get_temporal_extent(
+        min(time_ranges), max(time_ranges)
+    )  # type: ignore
 
-    collection_extent = pystac.Extent(spatial=spatial_extent, temporal=temporal_extent)
+    collection_extent = pystac.Extent(
+        spatial=spatial_extent,
+        temporal=temporal_extent,
+    )
 
     return collection_extent
 
@@ -95,7 +101,6 @@ def create_item(cog_href: str, collection: pystac.Collection) -> pystac.Item:
         )
 
     # data/WSF2019_v1_-100_16.tif -> WSF2019_v1_100_16
-    # item_id = cog_href.split("/")[-1].split(".")[0].replace("-", "")
     fname = os.path.splitext(os.path.basename(cog_href))[0]
     item_id = fname.replace("-", "")
 
@@ -103,17 +108,21 @@ def create_item(cog_href: str, collection: pystac.Collection) -> pystac.Item:
 
     dt = dateutil.parser.isoparse("2019-01-01")
 
-    properties = {}
+    properties: Dict[str, str] = {}
 
     item = pystac.Item(
-        id=item_id, geometry=geom, bbox=bounds, datetime=dt, properties=properties
+        id=item_id,
+        geometry=geom,
+        bbox=bounds,
+        datetime=dt,
+        properties=properties,
     )
 
     # Common metadata
     item.common_metadata.providers = [DLR_PROVIDER]
     item.common_metadata.gsd = gsd
 
-    item.collection = collection
+    item.collection = collection  # type: ignore
 
     # eo, for asset bands
     EOExtension.add_to(item)
